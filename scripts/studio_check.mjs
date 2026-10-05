@@ -14,7 +14,7 @@ async function rpc(method, params) {
     } catch (error) { if (attempt === 2) throw error; }
   }
 }
-const [mode, value] = process.argv.slice(2);
+const [mode, value, expectedError] = process.argv.slice(2);
 if (mode === '--source') {
   if (!/^0x[0-9a-fA-F]{40}$/.test(value ?? '')) throw Error('Address required');
   const normalize = text => text.replace(/\r\n/g, '\n').trimEnd() + '\n';
@@ -26,7 +26,10 @@ if (mode === '--source') {
   if (!['--success', '--error'].includes(mode) || !/^0x[0-9a-fA-F]{64}$/.test(value ?? '')) throw Error('--success/--error HASH required');
   const tx = await rpc('eth_getTransactionByHash', [value]);
   const leader = tx.consensus_data?.leader_receipt?.find(item => item.mode === 'leader');
+  const rawError = leader?.genvm_result?.stderr || leader?.result;
+  const decodedError = typeof rawError === 'string' ? Buffer.from(rawError, 'base64').toString('utf8') : '';
   console.log(JSON.stringify({hash: value, status: tx.status, execution: leader?.execution_result, consensus: tx.result_name,
-    ...(mode === '--error' ? {error: leader?.genvm_result?.stderr || leader?.result} : {})}));
+    ...(mode === '--error' ? {error: rawError, decoded_error: decodedError} : {})}));
   if (tx.status !== 'FINALIZED' || leader?.execution_result !== (mode === '--error' ? 'ERROR' : 'SUCCESS')) process.exitCode = 1;
+  if (expectedError && !decodedError.includes(expectedError)) process.exitCode = 1;
 }

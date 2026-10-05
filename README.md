@@ -64,18 +64,21 @@ python -m venv .venv
 .venv/Scripts/genvm-lint.exe check contracts/LicenseObligationPool.py
 .venv/Scripts/pytest.exe tests -q
 npm install -g genlayer@0.39.2
+npm install --ignore-scripts
 genlayer network set studionet
 genlayer account use YOUR_ENCRYPTED_DEDICATED_ACCOUNT
 genlayer deploy --contract contracts/LicenseObligationPool.py
 node scripts/inspect_source.mjs MIT BSD-3-Clause
 genlayer write CONTRACT add --args demo mit MIT MIT_HASH
 genlayer write CONTRACT add --args demo bsd BSD-3-Clause BSD_HASH
-genlayer call CONTRACT get_pool --args YOUR_ADDRESS demo
+node scripts/read_pool.mjs CONTRACT YOUR_ADDRESS demo mit bsd
 genlayer write CONTRACT remove --args demo bsd
 node scripts/studio_check.mjs --source CONTRACT
 node scripts/studio_check.mjs --success TX_HASH
 ```
 
 StudioNet is gasless. Use an encrypted dedicated account; never paste/export a private key. Wait for each receipt before sending the next write. FINALIZED is not execution success: inspect execution results separately. The test suite uses mocked web/model responses and direct mode does not run network validator callbacks. See [LIVE_PROOFS.md](LIVE_PROOFS.md) for actual consensus integration results, not planned proofs.
+
+Use the SDK reader for account-string view arguments: CLI 0.39.2 automatically encodes address-looking arguments as Address rather than string. The script preserves the view's declared argument type and requires no signing key.
 
 See [architecture](docs/architecture.md) and [security](SECURITY.md). This deployment is experimental and unaudited.
